@@ -241,7 +241,52 @@ app.post("/vote",(req,res) => {
 // } else {
 //     res.send("<h1> You cannot vote for another class </h1>");
 //}
+});
+/////////////////////////////////////////////////////////////////////////////
+app.route("/endElection")
+
+.get((req,res) => {
+    res.render("endElection");
 })
+
+.post((req,res) => {
+    const sql = `Update election set election_status = 1 where election_id = "${req.body.eleid}"`
+    db.query(sql,(e,result) => {
+        if(e) throw e;
+        res.redirect("/admin");
+    })
+});
+/////////////////////////////////////////////////////////////////////////////
+const ret2 = [];
+// const sql2 = `select * from results where election_id in (select election_id from election where election_status = 1) `
+const sql2 = `select 
+                distinct c.election_name, candidate_name, votes 
+                from results r 
+                inner join candidates c using(candidate_id)
+                where c.election_id in (select election_id from election where election_status = 1) 
+                order by votes DESC;`
+db.query(sql2,(e,result) => {
+    if(e) throw e;
+    for(var i of result){
+        ret2.push(i);
+    }
+})
+
+app.get("/result", (req,res) => {
+    res.render("result", {results: ret2});
+})
+
+// app.post("/result",(req,res) => {
+// // if( loginfo.class === req.body.class){
+//     const sql = `call updatevotecount(${req.body.eleid},"${req.body.canid}")`
+//     db.query(sql,(e,result) => {
+//         if(e) throw e;
+//         res.redirect("/home");
+//     })
+// // } else {
+// //     res.send("<h1> You cannot vote for another class </h1>");
+// //}
+// });
 
 
 
