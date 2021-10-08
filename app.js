@@ -37,7 +37,10 @@ app.use(express.json());
 //     );
 // });
 
-var loginfo;
+var loginfo = {
+    id:0,
+    class:'A'
+};
 
 app.route("/home")
 .get((req,res) => {
@@ -55,7 +58,7 @@ app.route("/")
     var ret = [];
     const id = req.body.username;
     const password = req.body.password;
-    const sql = `Select user_id,user_password FROM user WHERE user_id = "${req.body.username}" AND user_password = "${req.body.password}"`
+    const sql = `Select user_id,user_password,user_class FROM user WHERE user_id = "${req.body.username}" AND user_password = "${req.body.password}"`
     db.query(sql,
     (e, result) => {
         if(e) throw e;
@@ -63,7 +66,18 @@ app.route("/")
         for(var i of result){
             ret.push(i);
         }
-        loginfo = id;
+        loginfo.id = id;
+        loginfo.class = ret[0].class;
+        
+        console.log(ret[0].class);
+    //     const sql = `Select * from user where user_id like "${loginfo.id}"`;
+    //     db.query(sql,(e,result) => {
+    //     if(e) throw e;
+    //     for(var i of result){
+    //         data.push(i);
+    //     }
+    //     loginfo.class = data.user_class;
+    // })
         if(ret.length === 0){
             console.log("Username and Password do not match");
         } else {
@@ -106,6 +120,9 @@ app.route("/register")
         if(e) throw e;
         // console.log(result);
         res.redirect("/home");
+        loginfo.id = req.body.id;
+        loginfo.class = req.body.class;
+        
         // for(var i of result){
         //     ret.push(i);
         // }
@@ -157,7 +174,7 @@ app.route("/candidateApplication")
 
 .get((req,res) =>{
 
-    const sql = `Select * from user where user_id like "${loginfo}"`;
+    const sql = `Select * from user where user_id like "${loginfo.id}"`;
     db.query(sql,(e,result) => {
         if(e) throw e;
         for(var i of result){
@@ -166,13 +183,19 @@ app.route("/candidateApplication")
         res.render("candidateApplication",{election: data});
     })
   })
+  
 .post((req,res)=>{
   // const sql= ` UPDATE user SET user_id=concat('C',${loginfo}) `;
-  const sql= ` Insert into candidates values("concat('C',user_id)", "${req.body.elename}","${req.body.eleid}")`
-  db.query(sql,
-  (e, result) => {
-      if(e) throw e;
-      res.redirect("/home");
+    const sqlcan= ` Insert into candidates values("${'C'.concat(loginfo.id)}", "${req.body.elename}","${req.body.eleid}","${req.body.can_name}","${req.body.class}")`
+            db.query(sqlcan,
+            (e, result) => {
+                if(e) throw e;
+                res.redirect("/home");
+            })
+  
+  const sqlres = `Insert into results values ("${req.body.eleid}","${'C'.concat(loginfo.id)}",0)`
+  db.query(sqlres,(e, result) => {
+      if(e) throw(e);
   })
 });
 /////////////////////////////////////////////////////////////////////////////
@@ -190,9 +213,37 @@ app.get("/showElection", (req,res) => {
     res.render("showElection",{election: ret});
 })
 
-app.get("/result",(req,res)=>{
-  res.render("result");
+// app.get("/result",(req,res)=>{
+//   res.render("result");
+// })
+/////////////////////////////////////////////////////////////////////////////
+// app.route("/vote")
+const ret1 = [];
+const sql1 = `select * from candidates where election_id in (select election_id from election where election_status = 0)`
+db.query(sql1,(e,result) => {
+    if(e) throw e;
+    for(var i of result){
+        ret1.push(i);
+    }
 })
+
+app.get("/vote", (req,res) => {
+    res.render("vote", {candidates: ret1});
+})
+
+app.post("/vote",(req,res) => {
+// if( loginfo.class === req.body.class){
+    const sql = `call updatevotecount(${req.body.eleid},"${req.body.canid}")`
+    db.query(sql,(e,result) => {
+        if(e) throw e;
+        res.redirect("/home");
+    })
+// } else {
+//     res.send("<h1> You cannot vote for another class </h1>");
+//}
+})
+
+
 
 /////////////////////////////////////////////////////////////////////////////
 app.listen(3000, () => {
